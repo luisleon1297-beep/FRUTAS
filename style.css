@@ -15,58 +15,57 @@
   --px:4px;
 }
 
-/* RESET */
+/* Reset */
 *{ box-sizing:border-box; }
-html{ height:100%; }
-
-/* ✅ FIX PRINCIPAL: BODY NO CENTRADO, CON SCROLL */
+html, body{ height:100%; }
 body{
   margin:0;
   color:var(--ink);
+  font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
+  image-rendering: pixelated;
 
+  /* ✅ fondo */
   background:
     radial-gradient(900px 500px at 20% 10%, rgba(56,214,255,.20), transparent 55%),
     radial-gradient(900px 500px at 80% 20%, rgba(255,75,243,.16), transparent 60%),
     linear-gradient(180deg, var(--bg), var(--bg2));
 
-  display:flex;
-  justify-content:center;
-  align-items:flex-start;
-
-  min-height:100svh;
-  min-height:100dvh;
-  overflow-y:auto;
-
-  padding:16px;
+  /* ✅ iPhone safe areas (notch / barra) */
+  padding-top: calc(10px + env(safe-area-inset-top));
+  padding-left: calc(10px + env(safe-area-inset-left));
+  padding-right: calc(10px + env(safe-area-inset-right));
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
 
-  font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
-  image-rendering: pixelated;
+  /* ✅ IMPORTANTE: sin flex (evita “cortes” raros en Safari iOS) */
+  display:block;
+  overflow-x:hidden;
   -webkit-overflow-scrolling: touch;
 }
 
+/* contenedor centrado normal */
 .app{
-  width:min(980px, 100%);
+  width: min(980px, 100%);
+  margin: 0 auto;
 }
 
-/* HEADER */
+/* Header */
 .top{
   text-align:center;
-  margin-bottom:12px;
+  margin: 0 0 10px;
 }
 h1{
   margin:0;
-  font-size:clamp(20px, 4vw, 34px);
   letter-spacing:1px;
   text-shadow:0 3px 0 rgba(0,0,0,.45);
+  font-size: clamp(18px, 4vw, 34px);
 }
 .sub{
-  margin-top:6px;
-  font-size:12px;
+  margin:6px 0 0;
   color:var(--mut);
+  font-size:12px;
 }
 
-/* CABINET */
+/* Cabinet */
 .cabinet{
   border: var(--px) solid var(--stroke);
   background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
@@ -74,7 +73,7 @@ h1{
   padding:12px;
 }
 
-/* MARQUEE */
+/* Marquee */
 .marquee{
   border: var(--px) solid var(--stroke);
   background:#070a12;
@@ -87,6 +86,7 @@ h1{
   white-space:nowrap;
   animation: marquee 8s linear infinite;
   color:var(--y);
+  text-shadow: 0 2px 0 rgba(0,0,0,.5);
 }
 @keyframes marquee{
   from{ transform:translateX(100%); }
@@ -112,21 +112,22 @@ h1{
 .k{
   font-size:10px;
   color:var(--mut);
+  letter-spacing:1px;
 }
 .v{
+  margin-top:6px;
   font-size:20px;
   font-weight:900;
-  margin-top:6px;
 }
 
-/* SCREEN */
+/* Screen */
 .screen{
   border: var(--px) solid var(--stroke);
   background:#080b14;
   padding:10px;
 }
 
-/* LIGHTS */
+/* Lights */
 .lights{
   display:grid;
   grid-template-columns: repeat(12,1fr);
@@ -148,7 +149,7 @@ h1{
   100%{ background:var(--g); }
 }
 
-/* SLOT */
+/* Slot */
 .slot{
   display:grid;
   grid-template-columns: repeat(3,1fr);
@@ -164,30 +165,31 @@ h1{
 .reel::after{
   content:"";
   position:absolute;
-  left:6px;
-  right:6px;
+  left:6px; right:6px;
   top:50%;
   height: var(--px);
+  transform: translateY(-50%);
   background:#fff3;
 }
 .reel-track{
   position:absolute;
-  left:0;
-  right:0;
-  top:0;
+  left:0; right:0; top:0;
   display:flex;
   flex-direction:column;
   align-items:center;
+  will-change: transform;
 }
 .symbol{
   height:60px;
-  font-size:46px;
+  width:100%;
   display:flex;
   align-items:center;
   justify-content:center;
+  font-size:46px;
+  filter: drop-shadow(0 8px 0 rgba(0,0,0,.35));
 }
 
-/* MESSAGE */
+/* Message */
 .msg{
   margin-top:10px;
   border: var(--px) solid var(--stroke);
@@ -200,7 +202,7 @@ h1{
 .msg.good{ color:var(--g); }
 .msg.bad{ color:var(--r); }
 
-/* CONTROLS */
+/* Controls */
 .controls{
   display:flex;
   flex-wrap:wrap;
@@ -216,22 +218,22 @@ h1{
   font-weight:900;
   cursor:pointer;
   text-transform:uppercase;
+  user-select:none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
-.btn:active{
-  transform: translateY(4px);
-}
+.btn:active{ transform: translateY(3px); }
 .btn.main{ background:#124c6a; }
 .btn.warn{ background:#6a5a12; }
 .btn.good{ background:#1c6a3a; }
 .btn.ghost{ background:#000; }
 
-/* BOTONES GRANDES */
-#spinBtn,
-#cashoutBtn{
+/* Botones grandes */
+#spinBtn, #cashoutBtn{
   flex:1 1 100%;
 }
 
-/* PANELS */
+/* Panels */
 .grid2{
   display:grid;
   grid-template-columns: 1fr;
@@ -246,15 +248,18 @@ h1{
 .panel h2{
   margin:0 0 8px;
   font-size:13px;
+  letter-spacing:1px;
 }
 .rank{
   padding-left:18px;
   margin:0 0 8px;
+  color:var(--mut);
 }
 .rank li{
   display:flex;
   justify-content:space-between;
   font-size:13px;
+  gap:10px;
 }
 .row{
   display:flex;
@@ -266,18 +271,20 @@ h1{
   background:#000;
   color:var(--ink);
   padding:10px;
-  font-size:16px;
+  font-size:16px; /* evita zoom en iOS */
+  text-transform:uppercase;
 }
 .pay{
   padding-left:18px;
   font-size:12px;
+  color:var(--mut);
 }
 .hint{
   font-size:11px;
   color:var(--mut);
 }
 
-/* FOOTER */
+/* Footer */
 .foot{
   margin-top:10px;
   text-align:center;
@@ -285,15 +292,59 @@ h1{
   color:var(--mut);
 }
 
-/* TABLET */
+/* Tablet */
 @media (min-width:700px){
   .grid2{ grid-template-columns:1fr 1fr; }
 }
 
-/* DESKTOP */
+/* Desktop (más grande) */
 @media (min-width:900px){
   .hud{ grid-template-columns: repeat(6,1fr); }
   .reel{ height:150px; }
   .symbol{ height:72px; font-size:62px; }
 }
 
+/* ✅ iPhone 11 / móviles: TODO MÁS COMPACTO para que “entre” completo */
+@media (max-width:430px){
+  body{
+    padding-top: calc(6px + env(safe-area-inset-top));
+    padding-left: calc(6px + env(safe-area-inset-left));
+    padding-right: calc(6px + env(safe-area-inset-right));
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .cabinet{ padding:8px; box-shadow: none; }
+  .marquee{ padding:6px 8px; margin-bottom:8px; }
+
+  h1{ font-size:18px; }
+  .sub{ font-size:11px; }
+
+  /* HUD más compacto y legible */
+  .hud{ grid-template-columns: repeat(3, 1fr); gap:6px; }
+  .hud-box{ padding:6px; min-height:54px; }
+  .k{ font-size:9px; }
+  .v{ font-size:16px; margin-top:5px; }
+
+  /* Rodillos más chicos */
+  .screen{ padding:8px; }
+  .lights{ gap:4px; margin-bottom:6px; }
+  .lights i{ height:7px; }
+
+  .slot{ gap:6px; }
+  .reel{ height:104px; }
+  .symbol{ height:52px; font-size:40px; }
+
+  /* Botones compactos */
+  .btn{ padding:10px; font-size:13px; }
+  .msg{ font-size:12px; min-height:36px; }
+
+  /* Paneles más chicos */
+  .panel{ padding:8px; }
+  .panel h2{ font-size:12px; }
+  .rank li{ font-size:12px; }
+  .pay{ font-size:11px; }
+  .hint{ font-size:10px; }
+
+  /* Si aún queda largo, el footer lo hacemos mínimo */
+  .foot{ font-size:10px; }
+}
