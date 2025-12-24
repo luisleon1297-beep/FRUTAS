@@ -454,7 +454,7 @@
 
       // si auto sigue activo, gira de nuevo
       if (state.auto) {
-        await sleep(2500);
+        await sleep(3500);
         // chequeo por si se quedó sin créditos
         if (canAffordSpin()) spinOnce();
         else {
