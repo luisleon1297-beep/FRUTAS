@@ -17,6 +17,9 @@
   const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  // ✅ velocidad del AUTO SPIN (más lento)
+  const AUTO_SPIN_DELAY = 3500;
+
   /* ---------- SVG sprites (originales) ---------- */
   function svgDataUri(svg) {
     const encoded = encodeURIComponent(svg).replace(/'/g, "%27").replace(/"/g, "%22");
@@ -67,7 +70,6 @@
     { key: "LEMON", img: SPRITES.LEMON, w: 4 },
     { key: "STAR", img: SPRITES.STAR, w: 2 },
     { key: "SEVEN", img: SPRITES.SEVEN, w: 1 },
-    // BONUS (scatter) no entra como “normal” de línea, lo tratamos aparte en el pago
     { key: "BONUS", img: SPRITES.BONUS, w: 1 },
   ];
 
@@ -81,7 +83,7 @@
     return list[list.length - 1];
   }
 
-  /* ---------- Paylines mapping: line -> rows per reel (0 top, 1 mid, 2 bot) ---------- */
+  /* ---------- Paylines mapping ---------- */
   const PAYLINES = {
     1:  [1,1,1,1,1],
     2:  [0,0,0,0,0],
@@ -141,7 +143,7 @@
   let isSpinning = false;
   let lastWin = 0;
 
-  /* ---------- Audio (simple WebAudio) ---------- */
+  /* ---------- Audio ---------- */
   let audioCtx = null;
   function ensureAudio() {
     if (audioCtx) return;
@@ -197,6 +199,7 @@
     el.paylinesSvg.querySelectorAll("polyline").forEach(p => p.classList.remove("on"));
   }
 
+  // ✅ FIX: sin paréntesis extra
   function glowPaylines(lineNums) {
     clearPaylineGlow();
     if (!el.paylinesSvg) return;
@@ -204,7 +207,6 @@
       const p = el.paylinesSvg.querySelector(`polyline[data-line="${n}"]`);
       if (p) p.classList.add("on");
     });
-    // apaga luego
     setTimeout(clearPaylineGlow, 900);
   }
 
@@ -232,8 +234,8 @@
     return cell;
   }
 
-  // Creamos un “strip” largo por reel para animar
-  const STRIP_LEN = 24; // suficiente para “rueda”
+  /* ---------- Reels init ---------- */
+  const STRIP_LEN = 24;
   const reelStrips = Array.from({ length: 5 }, () =>
     Array.from({ length: STRIP_LEN }, () => weightedPick(SYMBOLS))
   );
@@ -241,7 +243,6 @@
   function renderReelsInitial() {
     el.tracks.forEach((track, r) => {
       track.innerHTML = "";
-      // duplicamos strip para que se vea continuo
       const strip = [...reelStrips[r], ...reelStrips[r]];
       strip.forEach(sym => track.appendChild(buildCell(sym)));
       track.style.transform = "translateY(0px)";
@@ -250,7 +251,6 @@
   }
 
   function getCellHeightPx() {
-    // toma la altura real de .cell (según tu CSS variable --cellH)
     const anyCell = el.tracks[0]?.querySelector(".cell");
     return anyCell ? anyCell.getBoundingClientRect().height : 86;
   }
@@ -261,7 +261,6 @@
   }
 
   function paytable(symbolKey, count) {
-    // paga por 3+ iguales (en línea) con multiplicadores simples
     const base = {
       CHERRY: 6,
       LEMON: 4,
@@ -272,21 +271,18 @@
     if (count < 3) return 0;
     if (count === 3) return base;
     if (count === 4) return base * 3;
-    return base * 6; // 5
+    return base * 6;
   }
 
   function evaluate(matrix) {
-    // matrix[reel][row] => symbolKey
     const wins = [];
     let total = 0;
 
-    // evaluar líneas activas
     for (let line = 1; line <= state.lines; line++) {
       const rows = PAYLINES[line];
       const keys = rows.map((row, reel) => matrix[reel][row]);
-      // contamos “desde el reel 1 hacia la derecha” cuántos iguales consecutivos
       const first = keys[0];
-      if (first === "BONUS") continue; // BONUS no paga por línea
+      if (first === "BONUS") continue;
 
       let count = 1;
       for (let i = 1; i < keys.length; i++) {
@@ -301,7 +297,6 @@
       }
     }
 
-    // BONUS scatter: 3+ en cualquier posición (sobre 15 celdas)
     const all = matrix.flat();
     const bonusCount = all.filter(k => k === "BONUS").length;
     const bonusTriggered = bonusCount >= 3;
@@ -310,54 +305,42 @@
   }
 
   function jackpotChanceBoost() {
-    // leve boost por bet/lines
     const t = totalBet();
-    return clamp(0.0006 + t * 0.00002, 0.0006, 0.01); // max 1%
+    return clamp(0.0006 + t * 0.00002, 0.0006, 0.01);
   }
 
   async function animateReels(finalMatrix) {
     const cellH = getCellHeightPx();
-    const spins = [18, 20, 22, 24, 26]; // diferentes “vueltas”
+    const spins = [18, 20, 22, 24, 26];
     const baseDur = 700;
 
-    // Para cada reel, animamos hacia abajo y al final “seteamos” el resultado visible
     await Promise.all(el.tracks.map(async (track, r) => {
       const distance = spins[r] * cellH;
       track.style.transition = `transform ${baseDur + r * 140}ms cubic-bezier(.16,.95,.2,1)`;
-      // pequeño “shake” audio
       sfxSpin();
-      // mueve
       track.style.transform = `translateY(${-distance}px)`;
       await sleep(baseDur + r * 140);
       sfxStop();
 
-      // “snap” al resultado: reconstruimos track con resultado en el centro (3 filas visibles)
       track.style.transition = "none";
       track.innerHTML = "";
 
-      // armamos un strip nuevo: algunos random arriba/abajo + 3 visibles centradas
       const padTop = 6;
       const padBot = 6;
 
       for (let i = 0; i < padTop; i++) track.appendChild(buildCell(weightedPick(SYMBOLS)));
-      // visibles (top/mid/bot)
       track.appendChild(buildCell(SYMBOLS.find(s => s.key === finalMatrix[r][0]) || weightedPick(SYMBOLS)));
       track.appendChild(buildCell(SYMBOLS.find(s => s.key === finalMatrix[r][1]) || weightedPick(SYMBOLS)));
       track.appendChild(buildCell(SYMBOLS.find(s => s.key === finalMatrix[r][2]) || weightedPick(SYMBOLS)));
       for (let i = 0; i < padBot; i++) track.appendChild(buildCell(weightedPick(SYMBOLS)));
 
-      // dejamos “centrado” para que se vean 3 filas (las del medio)
-      // (con overflow hidden del reel, se ven las 3 del centro)
       track.style.transform = `translateY(${-padTop * cellH}px)`;
     }));
   }
 
   function generateResultMatrix() {
-    // 5 reels x 3 rows
     const m = Array.from({ length: 5 }, () => Array.from({ length: 3 }, () => weightedPick(SYMBOLS).key));
 
-    // pequeña “lógica casino”: BONUS no demasiado frecuente
-    // si salieron demasiados BONUS, reducimos
     let bonusCount = m.flat().filter(k => k === "BONUS").length;
     while (bonusCount > 4) {
       const rr = rand(0, 4);
@@ -386,10 +369,7 @@
       lastWin = 0;
       renderHUD();
 
-      // cobrar apuesta
       state.credits -= totalBet();
-
-      // jackpot incrementa siempre
       state.jackpot += Math.max(1, Math.floor(totalBet() * 0.15));
 
       setMessage("🎰 Girando...");
@@ -398,19 +378,18 @@
       const matrix = generateResultMatrix();
       await animateReels(matrix);
 
-      // evaluar
       const { total, wins, bonusTriggered, bonusCount } = evaluate(matrix);
 
-      // jackpot por combinación 777 en línea 1 (middle) o por probabilidad
       const middle777 =
-        matrix[0][1] === "SEVEN" && matrix[1][1] === "SEVEN" && matrix[2][1] === "SEVEN" && matrix[3][1] === "SEVEN" && matrix[4][1] === "SEVEN";
+        matrix[0][1] === "SEVEN" && matrix[1][1] === "SEVEN" && matrix[2][1] === "SEVEN" &&
+        matrix[3][1] === "SEVEN" && matrix[4][1] === "SEVEN";
 
       const hitJackpot = middle777 || (Math.random() < jackpotChanceBoost());
 
       let jackpotWin = 0;
       if (hitJackpot) {
         jackpotWin = state.jackpot;
-        state.jackpot = 1000; // reset base
+        state.jackpot = 1000;
       }
 
       const totalWin = total + jackpotWin;
@@ -428,7 +407,7 @@
         );
         sfxWin();
       } else {
-        setMessage(`Sin premio. Intenta otra vez.`);
+        setMessage("Sin premio. Intenta otra vez.");
         sfxLose();
       }
 
@@ -440,11 +419,17 @@
       renderHUD();
       save();
 
+      // ✅ IMPORTANTE: si hay BONUS, detener auto-spin
       if (bonusTriggered) {
+        state.auto = false;     // ⛔ corta auto
+        renderHUD();
+        save();
+        setMessage("🎁 BONUS ACTIVADO - Auto Spin detenido");
         await runBonusGame(bonusCount);
         renderHUD();
         save();
       }
+
     } catch (err) {
       console.error(err);
       setMessage("⚠️ Error en el giro. Se reactivó SPIN.");
@@ -452,10 +437,9 @@
       isSpinning = false;
       setControlsEnabled(true);
 
-      // si auto sigue activo, gira de nuevo
+      // si auto sigue activo, gira de nuevo (PERO si hubo bonus ya se cortó arriba)
       if (state.auto) {
-        await sleep(3500);
-        // chequeo por si se quedó sin créditos
+        await sleep(AUTO_SPIN_DELAY);
         if (canAffordSpin()) spinOnce();
         else {
           state.auto = false;
@@ -468,7 +452,6 @@
 
   /* ---------- Bonus game ---------- */
   async function runBonusGame(bonusCount) {
-    // premio base según cantidad de BONUS
     const base = bonusCount === 3 ? 30 : bonusCount === 4 ? 60 : 120;
     const picks = 3;
 
@@ -478,10 +461,8 @@
 
     el.bonusSub.textContent = `Salieron ${bonusCount} BONUS. Elige ${picks} cajas (premio base: ${base}).`;
 
-    // construir cajas
     el.bonusGrid.innerHTML = "";
     const prizes = Array.from({ length: 9 }, () => base + rand(0, base * 2));
-    // metemos 2 “mega”
     prizes[rand(0, 8)] += base * 4;
     prizes[rand(0, 8)] += base * 3;
 
@@ -574,7 +555,6 @@
     state.auto = false;
     renderHUD();
     setMessage(`💰 CASHOUT: te quedaste con ${state.credits} créditos.`);
-    // aquí podrías guardar récord / enviar a server si quieres
   }
 
   function resetGame() {
@@ -591,17 +571,16 @@
 
   /* ---------- Events ---------- */
   function bind() {
-    el.betMinus.addEventListener("click", () => setBet(-1));
-    el.betPlus.addEventListener("click", () => setBet(+1));
-    el.linesBtn.addEventListener("click", toggleLines);
-    el.spinBtn.addEventListener("click", () => spinOnce());
-    el.autoBtn.addEventListener("click", toggleAuto);
-    el.maxBetBtn.addEventListener("click", maxBet);
-    el.muteBtn.addEventListener("click", toggleMute);
-    el.cashoutBtn.addEventListener("click", cashout);
-    el.resetBtn.addEventListener("click", resetGame);
+    el.betMinus?.addEventListener("click", () => setBet(-1));
+    el.betPlus?.addEventListener("click", () => setBet(+1));
+    el.linesBtn?.addEventListener("click", toggleLines);
+    el.spinBtn?.addEventListener("click", () => spinOnce());
+    el.autoBtn?.addEventListener("click", toggleAuto);
+    el.maxBetBtn?.addEventListener("click", maxBet);
+    el.muteBtn?.addEventListener("click", toggleMute);
+    el.cashoutBtn?.addEventListener("click", cashout);
+    el.resetBtn?.addEventListener("click", resetGame);
 
-    // Teclas
     window.addEventListener("keydown", (e) => {
       if (e.repeat) return;
       if (e.code === "Space") { e.preventDefault(); spinOnce(); }
@@ -625,7 +604,6 @@
     setMessage("LISTO ▶ Presiona SPIN");
   }
 
-  // Asegura que el DOM exista antes de enganchar botones
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
   } else {
